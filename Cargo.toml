@@ -1,0 +1,8 @@
+[package]
+name = "ternary-life"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ternary_life"
+path = "src/lib.rs"
