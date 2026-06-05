@@ -1,73 +1,70 @@
 # ternary-life
 
-**Game of Life with a lifecycle: young, old, dead. Aging as a rule, not a bug.**
+**Conway's Game of Life with three states. The dead are dead, the living age, and something new emerges.**
 
-Conway's Game of Life has two states: alive and dead. Birth requires exactly 3 neighbors. Survival requires 2 or 3. That's it — and from those rules, all complexity emerges.
+The original Game of Life has two states: alive and dead. Simple rules, complex behavior. Now add a third state: *old*. Cells that have been alive for multiple generations. They're not dead, but they're not fresh either. They have history.
 
-But what if being alive isn't a single state? What if cells *age*? This crate implements a ternary Game of Life where cells progress through a lifecycle: **0 = dead → 1 = young → -1 = old → 0 = dead**. Young cells survive with 2-3 neighbors (standard). Old cells survive with only 1-2 neighbors (harder to kill — experience matters). But old cells can't give birth — only fresh young cells emerge from empty space.
+The rules shift: a cell is *born* if it has exactly three young neighbors (not old — old cells are crowded, not fertile). A young cell *survives* with 1-2 neighbors. An old cell dies from overcrowding (3+ neighbors) or loneliness (0 neighbors). Old cells can't birth new cells.
 
-This single change — adding aging — creates fundamentally different dynamics. The standard Game of Life has still lifes and oscillators. The ternary lifecycle has *generational turnover*: populations boom with young cells, mature into old cells, then die back, creating cyclic population waves with period ~15.
+The result is a Game of Life with *inertia*. Young cells are volatile — they appear and disappear like standard Life. Old cells are sticky — they persist longer, creating stable structures that the young cells orbit around. The population naturally evolves toward a mix: young cells at the frontier, old cells in the core, empty cells at the boundary.
 
 ## What's Inside
 
-- **`LifeGrid`** — the grid: `cells: Vec<i8>`, `width: usize`. Dead simple storage
-- **`tick()`** — one generation. Rules:
-  - **Dead (0) + 3 neighbors → Young (1)**: birth as before
-  - **Young (1) + 2-3 neighbors → Old (-1)**: survive but age
-  - **Old (-1) + 1-2 neighbors → Old (-1)**: survive (experienced cells are resilient)
-  - **Old (-1) + anything else → Dead (0)**: death from overcrowding or loneliness
-  - **Young (1) + <2 or >3 neighbors → Dead (0)**: standard death
-- **`census()`** — count young, old, dead cells
-- **`is_stable()`** — has the grid stopped changing?
-- **`find_oscillators()`** — detect periodic patterns (period ≤ 20)
+- **`Grid`** — the ternary grid. Values: 0 (empty/dead), 1 (young/alive), -1 (old/aging)
+- **`new(width, height)`** — create an empty grid
+- **`set(x, y, value)`** / **`get(x, y)`** — read and write cells
+- **`tick()`** — advance one generation. Apply the ternary Life rules
+- **`census()`** — count cells in each state. `{young, old, dead}`
+- **`oscillator_detected()`** — has the grid entered a repeating cycle?
+- **`tick_idempotent_empty()`** — an empty grid stays empty (the conservation baseline)
 
 ## Quick Example
 
 ```rust
 use ternary_life::*;
 
-let mut grid = LifeGrid::new(20, 20);
+let mut grid = Grid::new(10, 10);
+// Place a "glider" of young cells
+grid.set(1, 0, 1);
+grid.set(2, 1, 1);
+grid.set(0, 2, 1);
+grid.set(1, 2, 1);
+grid.set(2, 2, 1);
 
-// Place a "seed" — a cluster of young cells
-grid.set(10, 10, 1); // young
-grid.set(11, 10, 1);
-grid.set(12, 10, 1);
-
-// Run the lifecycle
-for _ in 0..100 {
+// Run 20 generations
+for _ in 0..20 {
     grid.tick();
-    let (young, old, dead) = grid.census();
-    // Watch: young boom → old accumulate → die-off → young boom again
 }
 
-// The lifecycle IS a built-in clock
-// Period ≈ 15 ticks from boom to bust to boom
+let c = grid.census();
+println!("Young: {}, Old: {}, Dead: {}", c.young, c.old, c.dead);
+// The glider moves, some cells age to -1, the pattern drifts
 ```
 
 ## The Deeper Truth
 
-**Aging creates a built-in clock.** In standard Life, patterns can be immortal (gliders, still lifes). In ternary Life, everything ages. Young becomes old, old dies. This means:
+**Three-state Life has a natural aging process.** Standard Conway Life is binary — cells are either alive or dead, with no memory of how long they've been alive. Ternary Life adds *time* as a state variable. The old state means "this cell has been alive for a while" — it carries history.
 
-1. **No immortal static patterns** — even the most stable structure eventually ages out
-2. **Cyclic dynamics** — the boom/bust lifecycle creates periodic population waves
-3. **Different survival rules for different ages** — old cells are *more* resilient (1-2 neighbors) but young cells are the *only* ones that emerge from birth
-4. **Generational turnover** — the population is always renewing, never stagnating
+This creates a completely different dynamical landscape. In standard Life, all living cells are interchangeable. In ternary Life, the population has *structure*: a young frontier of volatile cells and an old core of stable cells. The frontier explores new territory. The core preserves what works. This is exactly how organizations, ecosystems, and civilizations work — young agents explore, old agents consolidate.
 
-This mirrors biological reality more faithfully than standard Life. In real ecosystems, aging isn't a failure — it's the mechanism that prevents stagnation and enables renewal.
+The oscillator detection is crucial: ternary Life has more oscillator types than binary Life because the old state creates more possible configurations. A structure that oscillates between {young, old, young, old...} is a new kind of oscillator that doesn't exist in the binary game.
 
 **Use cases:**
-- **Artificial life** — study how aging affects ecosystem dynamics
-- **Generative art** — lifecycle patterns create distinctive visual textures
-- **Education** — compare binary Life vs. ternary Life to see how small rule changes create large effects
-- **Population dynamics** — boom/bust cycles with generational turnover
-- **Cellular automata research** — ternary Life as a bridge between binary CA and continuous models
+- **Cellular automata research** — the simplest extension of Conway's Life
+- **Generative art** — ternary grids produce richer visual patterns than binary
+- **Education** — demonstrate emergence, aging, and population dynamics
+- **Game design** — terrain generation with natural aging
+- **Multi-agent modeling** — young vs. old agent dynamics
 
 ## See Also
 
-- **ternary-fire** — forest fire model (another lifecycle: tree → burning → empty → tree)
-- **ternary-ising** — ternary lattice dynamics (no lifecycle, different physics)
-- **ternary-sandpile** — self-organized criticality (avalanche dynamics)
-- **ternary-drift** — population-level dynamics without spatial structure
+- **ternary-fire** — fire spreading is Life with directional rules
+- **ternary-minority** — the anti-Life: cells flip to the minority state
+- **ternary-morph** — morphological analysis of Life patterns (erosion, dilation)
+- **ternary-sandpile** — another cellular automaton, but with self-organized criticality
+- **ternary-ising** — spin dynamics (the physics cousin of Life)
+- **ternary-color** — visualize Life grids with ternary color palettes
+- **ternary-percolation** — do living cells form spanning clusters?
 
 ## Install
 
